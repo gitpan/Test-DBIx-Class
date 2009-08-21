@@ -6,10 +6,10 @@ use warnings;
 
 use base 'Test::Builder::Module';
 
-our $VERSION = '0.01';
+our $VERSION = '0.02';
 our $AUTHORITY = 'cpan:JJNAPIORK';
 
-use Test::DBIx::Class::Schema;
+use Test::DBIx::Class::SchemaManager;
 use Path::Class;
 use Config::Any;
 use Hash::Merge;
@@ -558,7 +558,7 @@ sub _initialize_schema {
 	my $schema_manager;
 
 	eval {
-		$schema_manager = Test::DBIx::Class::Schema->initialize_schema(
+		$schema_manager = Test::DBIx::Class::SchemaManager->initialize_schema(
 			%$config, 
 			builder => $builder,
 		);
