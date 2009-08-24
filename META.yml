@@ -27,6 +27,7 @@ requires:
   DBIx::Class::UUIDColumns: 0.02005
   Data::UUID: 1.202
   Digest::MD5: 2.39
+  Hash::Merge: 0.11
   Moose: 0.88
   MooseX::Attribute::ENV: 0.01
   MooseX::Types: 0.16
@@ -39,4 +40,4 @@ requires:
 resources:
   license: http://dev.perl.org/licenses/
   repository: git://github.com/jjn1056/Test-DBIx-Class.git
-version: 0.02
+version: 0.03
