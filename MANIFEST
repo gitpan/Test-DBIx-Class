@@ -45,6 +45,7 @@ t/07-alternative-config.t
 t/etc/example/fixtures/core.pl
 t/etc/example/fixtures/more.pl
 t/etc/example/schema.pl
+t/etc/example/schema1-prod.pl
 t/etc/example/schema1.pl
 t/etc/example/schema2.pl
 t/etc/example/schema3.pl
