@@ -29,6 +29,7 @@ lib/Test/DBIx/Class/FixtureCommand/Populate.pm
 lib/Test/DBIx/Class/FixtureCommand/PopulateMore.pm
 lib/Test/DBIx/Class/Role/FixtureCommand.pm
 lib/Test/DBIx/Class/SchemaManager.pm
+lib/Test/DBIx/Class/SchemaManager/Trait/SQLite.pm
 lib/Test/DBIx/Class/Types.pm
 Makefile.PL
 MANIFEST			This list of files

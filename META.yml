@@ -29,8 +29,10 @@ requires:
   Data::Visitor: 0.25
   Digest::MD5: 2.39
   Hash::Merge: 0.11
+  List::MoreUtils: 0.22
   Moose: 0.88
   MooseX::Attribute::ENV: 0.01
+  MooseX::Traits::Pluggable: 0.04
   MooseX::Types: 0.16
   Path::Class: 0.17
   SQL::Translator: 0.09007
@@ -41,4 +43,4 @@ requires:
 resources:
   license: http://dev.perl.org/licenses/
   repository: git://github.com/jjn1056/Test-DBIx-Class.git
-version: 0.06
+version: 0.07
