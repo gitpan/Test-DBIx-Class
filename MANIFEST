@@ -30,6 +30,7 @@ lib/Test/DBIx/Class/FixtureCommand/PopulateMore.pm
 lib/Test/DBIx/Class/Role/FixtureCommand.pm
 lib/Test/DBIx/Class/SchemaManager.pm
 lib/Test/DBIx/Class/SchemaManager/Trait/SQLite.pm
+lib/Test/DBIx/Class/SchemaManager/Trait/Testmysqld.pm
 lib/Test/DBIx/Class/Types.pm
 Makefile.PL
 MANIFEST			This list of files
@@ -43,6 +44,7 @@ t/04-load-fixtures.t
 t/05-example-schema.t
 t/06-basic-test-schema.t
 t/07-alternative-config.t
+t/08-test-mysqld.t
 t/etc/example/fixtures/core.pl
 t/etc/example/fixtures/more.pl
 t/etc/example/schema.pl

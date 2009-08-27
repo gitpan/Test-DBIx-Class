@@ -74,6 +74,11 @@ package Test::DBIx::Class::SchemaManager; {
 		isa => 'HashRef',
 	);
 
+	has 'last_statement' => (
+		is=>'rw',
+		isa=>'Str',
+	);
+
 	sub get_fixture_sets {
 		my ($self, @sets) = @_;
 		my @return;
@@ -110,15 +115,21 @@ package Test::DBIx::Class::SchemaManager; {
 	sub initialize_schema {
 		my ($class, $config) = @_;
 
-		my @traits = defined $config->{traits} && ref $config->{traits} eq 'ARRAY' ? @{$config->{traits}} : ();
+		my @traits = ();
+		if(defined $config->{traits}) {
+			@traits = ref $config->{traits} ? @{$config->{traits}} : ($config->{traits});
+		}
+
 		if(my $connect_info = $config->{connect_info}) {
 			$connect_info = to_ConnectInfo($connect_info);
+			my ($driver) = $connect_info->{dsn} =~ /dbi:([^:]+):/i;
+			## TODO map drivers to storage traits
 		} else {
 			push @traits, 'SQLite'
 			  unless @traits;
 		}
 		@traits = uniq @traits;
-		
+
 		$config->{traits} = \@traits;
 		my $self = $class->new_with_traits($config);
 
@@ -128,6 +139,18 @@ package Test::DBIx::Class::SchemaManager; {
 		} else {
 			return;
 		}
+	}
+
+	## TODO we need to fix DBIC to allow debug levels and channels
+	sub _setup_debug {
+		my $self = shift @_;
+		my $cb = $self->schema->storage->debugcb;
+
+		$self->schema->storage->debug(1);
+		$self->schema->storage->debugcb(sub {
+			$cb->(@_) if $cb;
+			$self->last_statement($_[1]);
+		});
 	}
 
 	sub setup {
@@ -182,7 +205,9 @@ package Test::DBIx::Class::SchemaManager; {
 			$fixture_command = $fixture_class->new(schema_manager=>$self);
 			shift(@args);
 		}
-		return $fixture_command->install_fixtures(@args);
+		return $self->schema->txn_do( sub {
+			$fixture_command->install_fixtures(@args);
+		});
 	}
 
 	sub DESTROY {
