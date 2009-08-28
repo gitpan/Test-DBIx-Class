@@ -1,62 +1,64 @@
-package Test::DBIx::Class::SchemaManager::Trait::Testmysqld; {
+package Test::DBIx::Class::SchemaManager::Trait::Testpostgresql; {
 	
 	use Moose::Role;
 	use MooseX::Attribute::ENV;
-	use Test::mysqld;
+	use Test::postgresql;
 	use Test::More ();
 	use Path::Class qw(dir);
 
-	has '+force_drop_table' => (default=>1);
 
-	has mysqldobj => (
+	has postgresqlobj => (
 		is=>'ro',
 		init_arg=>undef,
 		lazy_build=>1,
 	);
 
 
-	has [qw/base_dir mysql_install_db mysqld/] => (
+	has [qw/base_dir initdb postmaster/] => (
 		is=>'ro', 
 		traits=>['ENV'], 
 	);
 
-	has my_cnf => (is=>'ro', isa=>'HashRef', auto_deref=>1);
-
-	sub _build_mysqldobj {
+	sub _build_postgresqlobj {
 		my ($self) = @_;
 		if($self->keep_db) {
-			$ENV{TEST_MYSQLD_PRESERVE} = 1;
+			$ENV{TEST_POSTGRESQL_PRESERVE} = 1;
 		}
 
 		my %config = (
-			my_cnf=>{'skip-networking'=>''},
-			$self->my_cnf,
+			initdb_args => $Test::postgresql::Defaults{initdb_args} ."",
+			postmaster_args => $Test::postgresql::Defaults{initdb_args} ." --shared_buffers=64M",
 		);
 
 		$config{base_dir} = $self->base_dir if $self->base_dir;	
-		$config{mysql_install_db} = $self->mysql_install_db if $self->mysql_install_db;	
-		$config{mysqld} = $self->mysqld if $self->mysqld;	
+		$config{initdb} = $self->initdb if $self->initdb;	
+		$config{postmaster} = $self->postmaster if $self->postmaster;
+		
+		if($self->base_dir && -e $self->base_dir) {
+			$self->builder->ok(-w $self->base_dir, "Path ".$self->base_dir." is accessible, forcing 'force_drop_table'");
+			$self->force_drop_table(1);
+		}	
 
-		if(my $testdb = Test::mysqld->new(%config)) {
+		if(my $testdb = Test::postgresql->new(%config)) {
 			return $testdb;
 		} else {
-			die $Test::mysqld::errstr;
+			die $Test::postgresql::errstr;
 		}
 	}
 
 	sub get_default_connect_info {
 		my ($self) = @_;
-		my $base_dir = $self->mysqldobj->base_dir;
+		my $port = $self->postgresqlobj->port;
 
 		Test::More::diag(
-			"Starting mysqld with: ".
-			$self->mysqldobj->mysqld.
-			" --defaults-file=".$self->mysqldobj->base_dir . '/etc/my.cnf'.
-			" --user=root"
+			"Starting postgresql with: ".
+            $self->postgresqlobj->postmaster.
+            ' -p ', $port,
+            ' -D ', $self->postgresqlobj->base_dir . '/data'
 		);
 
-		Test::More::diag("DBI->connect('DBI:mysql:test;mysql_socket=$base_dir/tmp/mysql.sock','root','')");
-		return ["DBI:mysql:test;mysql_socket=$base_dir/tmp/mysql.sock",'root',''];
+		Test::More::diag("DBI->connect('DBI:Pg:dbname=template1;port=$port','postgres',''])");
+		return ["DBI:Pg:dbname=template1;port=$port",'postgres',''];
 	}
 
 	after 'cleanup' => sub {
@@ -75,31 +77,30 @@ __END__
 
 =head1 NAME
 
-Test::DBIx::Class::SchemaManager::Trait::Testmysqld - deploy to a test mysql instance
+Test::DBIx::Class::SchemaManager::Trait::Testpostgresql - deploy to a test Postgresql instance
 
 =head1 DESCRIPTION
 
-This trait uses L<Test::mysqld> to auto create a test instance of mysql in a
-temporary area.  This way you can test against mysql without having to create
-a test database, users, etc.  Mysql needs to be installed (but doesn't need to
-be running) as well as L<DBD::mysql>.  You need to install these yourself.
+This trait uses L<Test::postgresql> to auto create a test instance of Postgresql in a
+temporary area.  This way you can test against Postgresql without having to create
+a test database, users, etc.  Postgresql needs to be installed (but doesn't need to
+be running) as well as L<DBD::Pg>.  You need to install these yourself.
 
-Please review L<Test::mysqld> for help if you get stuck.
-
+Please review L<Test::postgresql> for help if you get stuck.
 
 =head1 CONFIGURATION
 
 This trait supports all the existing features but adds some additional options
 you can put into your inlined of configuration files.  These following 
 additional configuration options basically map to the options supported by 
-L<Test::mysqld> and the docs are adapted shamelessly from that module.
+L<Test::postgresql> and the docs are adapted shamelessly from that module.
 
-For the most part, if you have mysql installed in a normal, findable manner
+For the most part, if you have Postgresql installed in a normal, findable manner
 you should be able to leave all these options blank.
 
 =head2 base_dir
 
-Returns directory under which the mysqld instance is being created. If you leave
+Returns directory under which the postgresql instance is being created. If you leave
 this unset we automatically create a place in the temporary directory and then
 clean it up later.  Unless you plan to roundtrip to the same database a lot
 you can just leave this blank.
@@ -110,7 +111,7 @@ you specifically use the 'keep_db' option.  SO be care where you point it!
 Here's an example use.  I often want the test database setup in my local
 testing directory, that makes it easy for me to examine the logs, etc.  I do:
 
-	BASE_DIR=t/tmp KEEP_DB=1 prove -lv t/my-mysql-test.t
+	BASE_DIR=t/tmp KEEP_DB=1 prove -lv t/my-postgresql-test.t
 
 Now I can roundtrip the test as often as I want and in between tests I can
 review the logs, start the database manually and login (see the 'keep_db'
@@ -121,41 +122,28 @@ You may need to do this if you are stuck on a shared host and can't write
 anything to /tmp.  Remember, you can also put the 'base_dir' option into
 configuration instead of having to type it into the commandline each time!
 
-=head2 my_cnf
+Note that if you override the BASE_DIR we will set the 'force_drop_tables'
+option to true to ensure that we properly clean the database before trying
+to install tables and fixtures.
 
-A hashref containing the list of name=value pairs to be written into "my.cnf",
-which is the primary configuration file for the mysql instance.  Again, unless
-you have some specific needs you can leave this empty, since we set the few
-things most needed to get a server running.  You will need to review the
-documentation on the Mysql website for options related to this.
+=head2 initdb and postmaster
 
-=head2 mysql_install_db or mysqld
+If your postgresql is not in the $PATH you might need to specify the location
+to one of there binaries.  If you have a normal postgresql setup this should 
+not be a problem and you can leave this blank.
 
-If your mysqld is not in the $PATH you might need to specify the location to
-one of there binaries.  If you have a normal mysql setup this should not be
-a problem and you can leave this blank.
-
-For example, I often use L<MySQL::Sandbox> to setup various versions of mysql
-in my local user directory, particularly if I am on a shared host, or in the
-case where I don't want mysql installed globally.  Personally I think this is
-really your safest option (and there will probably be a trait based on this
-in the future)
+If you have to set these, please note you need to set the full path to the
+required file, not just the path to containing directory.
 
 =head1 NOTES
 
 The following are notes regarding the way this trait alters or extends the 
 core functionality as described in the basic documentation.
 
-=head2 force_drop_table
-
-Since it is always safe to use the 'force_drop_table' option with mysql, we set
-the default to true.  We recommend you leave it this way, particularly if you
-want to 'roundtrip' the same test database. 
-
 =head2 keep_db
 
 If you use the 'keep_db' option, this will preserve the temporarily created
-database files, however it will not prevent L<Test::mysqld> from stopping the
+database files, however it will not prevent L<Test::postgresql> from stopping the
 database when you are finished.  This is a safety measure, since if we didn't
 stop a test generated database instance automatically, you could easily end up
 with many databases running at once, and that could bring your server or testing
@@ -165,18 +153,20 @@ If you use the 'keep_db' option and want to start and log into the test generate
 database instance, you can start the database by noticing the diagnostic output
 that should be generated at the top of your test.  It will look similar to:
 
-	# Starting mysqld with: /usr/local/mysql/bin/mysqld --defaults-file=/tmp/KHKfJf0Yf6/etc/my.cnf --user=root
+	# Starting postgresql with: /Library/PostgreSQL/8.4/bin/postmaster \
+	 -p 15432 -D /tmp/E4tuZF5uFR/data
+	# DBI->connect('DBI:Pg:dbname=template1;port=15432','postgres',''])
 
 You can then start the database instance yourself with something like:
 
-	/usr/local/mysql/bin/mysqld --defaults-file=/tmp/WT0P0VutAe/etc/my.cnf \
-	--user=root &
-	[1] 3447
-	....
-	090827 15:06:16  InnoDB: Started; log sequence number 0 78863
-	090827 15:06:16 [Note] Event Scheduler: Loaded 0 events
-	090827 15:06:16 [Note] /usr/local/mysql/bin/mysqld: ready for connections.
-	Version: '5.1.37'  socket: '/tmp/WT0P0VutAe/tmp/mysql.sock'  port: 0  MySQL Community Server (GPL)
+	./Library/PostgreSQL/8.4/bin/postmaster -p 15432 \
+	-D /tmp/E4tuZF5uFR/data &
+
+You will get output that looks like:
+
+	[1] 1564
+	LOG:  database system is ready to accept connections
+	LOG:  autovacuum launcher started
 
 There will be some additional output to the term and then the server will go
 into the background.  If you don't like the extra output, you can just redirect
@@ -184,22 +174,36 @@ it all to /dev/null or whatever is similar for your OS.
 
 You can now log into the test generated database instance with:
 
-	mysql --socket=/tmp/WT0P0VutAe/tmp/mysql.sock -u root test
+	psql -h localhost --user postgres --port 15432 -d template1
 
 You may need to specify the full path to 'mysql' if it's not in your search 
 $PATH.
 
 When you are finished you can then kill the process.  In this case our reported
-process id is '3447'
+process id is '1564'
 
-	kill 3447
+	kill 1564
 
 And then you might wish to 'tidy' up temp
 
-	rm -rf /tmp/WT0P0VutAe
+	rm -rf /tmp/E4tuZF5uFR
 
 All the above assume you are on a unix or unixlike system.  Would welcome 
 document patches for how to do all the above on windows.
+
+=head2 Noisy warnings
+
+When running the L<Test::postgresql> instance, you'll probably see a lot of
+mostly harmless warnings, similar to:
+
+	NOTICE:  drop cascades to 2 other objects
+	DETAIL:  drop cascades to constraint cd_track_fk_cd_id_fkey on table cd_track
+	drop cascades to constraint cd_artist_fk_cd_id_fkey on table cd_artist
+	NOTICE:  CREATE TABLE / PRIMARY KEY will create implicit index "cd_pkey" for table "cd"
+
+In general these are harmless and can be ignored.  I will work with the author
+of L<Test::postgresql> to see if we can find a way to redirect these to a log 
+file somewhere.
 
 =head1 AUTHOR
 

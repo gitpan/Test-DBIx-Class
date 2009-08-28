@@ -39,9 +39,8 @@ requires:
   Scalar::Util: 1.19
   Sub::Exporter: 0.982
   Test::Builder: 0.92
-  Test::mysqld: 0.06
   perl: 5.8.0
 resources:
   license: http://dev.perl.org/licenses/
   repository: git://github.com/jjn1056/Test-DBIx-Class.git
-version: 0.08
+version: 0.09
