@@ -6,18 +6,19 @@ use warnings;
 
 use base 'Test::Builder::Module';
 
-our $VERSION = '0.09';
+our $VERSION = '0.10';
 our $AUTHORITY = 'cpan:JJNAPIORK';
 
-use Test::DBIx::Class::SchemaManager;
-use Path::Class;
 use Config::Any;
-use Hash::Merge;
-use Sub::Exporter;
-use Test::More ();
-use Digest::MD5;
-use Scalar::Util 'blessed';
 use Data::Visitor::Callback;
+use Digest::MD5;
+use Hash::Merge;
+use Path::Class;
+use Scalar::Util ();
+use Sub::Exporter;
+use Test::DBIx::Class::SchemaManager;
+use Test::Differences;
+use Test::More ();
 
 sub import {
 	my ($class, @opts) = @_;
@@ -83,9 +84,9 @@ sub import {
 					my ($result1, $result2, $message) = @_;
 					$message = defined $message ? $message : ref($result1) . " equals " . ref($result2);
 					if( ref($result1) eq ref($result2) ) {
-						Test::More::is_deeply(
-							{$result1->get_columns},
+						eq_or_diff(
 							{$result2->get_columns},
+							{$result1->get_columns},
 							$message,
 						);
 					} else {
@@ -107,7 +108,7 @@ sub import {
 							[@result];
 						} ($rs1, $rs2);
 
-						Test::More::is_deeply([$rs1],[$rs2],$message);
+						eq_or_diff([$rs2],[$rs1],$message);
 					} else {
 						Test::More::fail($message ." :ResultSet arguments not of same class");
 					}
@@ -135,7 +136,7 @@ sub import {
 						} else {
 							Test::More::pass($message);
 						}
-					} elsif( $arg && ref $arg && (ref $arg eq 'HASH') ) {
+					} elsif( $arg && ref $arg && (ref $arg eq 'HASH' || ref $arg eq 'ARRAY') ) {
 						my @return;
 						eval {
 							@return = $schema_manager->install_fixtures($arg);
@@ -179,7 +180,7 @@ sub import {
 						my $fields = shift(@args);
 						@fields = ref $fields ? @$fields : ($fields); 
 					} 
-					if(blessed $args[0] && 
+					if(Scalar::Util::blessed($args[0]) && 
 						$args[0]->isa('DBIx::Class') && 
 						!$args[0]->isa('DBIx::Class::ResultSet')
 					) {
@@ -213,9 +214,9 @@ sub import {
 							die "$_ is not an available field"
 							  unless $result->can($_); 
 							$_ => $result->$_ } @fields};
-						Test::More::is_deeply($compare_rs,$compare,$message);
+						eq_or_diff($compare,$compare_rs,$message);
 						return $compare;
-					} elsif (blessed $args[0] && $args[0]->isa('DBIx::Class::ResultSet')) {
+					} elsif (Scalar::Util::blessed($args[0]) && $args[0]->isa('DBIx::Class::ResultSet')) {
 
 						my $resultset = shift(@args);
 						unless(@fields) {
@@ -251,15 +252,18 @@ sub import {
 							})->all;
 						my %compare_rs;
 						foreach my $row(@resultset) {
+							no warnings 'uninitialized';
 							my $id = Digest::MD5::md5_hex(join('.', map {$row->{$_}} sort keys %$row));
-							$compare_rs{$id} = $row;
+							$compare_rs{$id} = { map { $_,"$row->{$_}"} keys %$row};
 						}
 						my %compare;
 						foreach my $row(@compare) {
+							no warnings 'uninitialized';
 							my $id = Digest::MD5::md5_hex(join('.', map {$row->{$_}} sort keys %$row));
-							$compare{$id} = $row;
+                            ## Force comparison stuff in stringy form :(
+							$compare{$id} = { map { $_,"$row->{$_}"} keys %$row};
 						}
-						Test::More::is_deeply(\%compare_rs,\%compare,$message);
+						eq_or_diff(\%compare,\%compare_rs,$message);
 						return \@compare;
 					} else {
 						die "I'm not sure what to do with your arguments";
@@ -273,6 +277,13 @@ sub import {
 					Test::More::pass($message);
 				}
 			},
+            cleanup_schema => sub {
+                return sub {
+					my $message = shift @_ || 'Schema cleanup complete';
+					$schema_manager->cleanup;
+					Test::More::pass($message);
+                }
+            },
 			map {
 				my $source = $_;
  				$source => sub {
@@ -306,7 +317,7 @@ sub import {
 
 	$class->$exporter(
 		qw/Schema ResultSet is_result is_resultset hri_dump fixtures_ok reset_schema
-			eq_result eq_resultset is_fields dump_settings /,
+			eq_result eq_resultset is_fields dump_settings cleanup_schema /,
 		 @exports
 	);
 }
@@ -413,34 +424,45 @@ sub _prepare_fixtures {
 		@dirs = $class->_normalize_config_path($class->_default_fixture_paths);
 	}
 
-		my @extensions = $class->_allowed_extensions;
-		my @files = grep { $class->_is_allowed_extension($_) }
-			map {Path::Class::dir($_)->children} 
-			grep { -e $_  } @dirs;
+    my @extensions = $class->_allowed_extensions;
+    my @files = (
+        grep { $class->_is_allowed_extension($_) }
+        map {Path::Class::dir($_)->children} 
+        grep { -e $_  }
+        @dirs
+    );
 
-		my $fixture_definitions = Config::Any->load_files({
-			files => \@files,
-			use_ext => 1,
-		});
+    my $fixture_definitions = Config::Any->load_files({
+        files => \@files,
+        use_ext => 1,
+    });
 
-		my %merged_fixtures;
-		foreach my $fixture_definition(@$fixture_definitions) {
-			my ($path, $fixture) = each %$fixture_definition;
-			my $file = Path::Class::file($path)->basename;
-			$file =~s/\..{1,4}$//;
-			if($merged_fixtures{$file}) {
-				$merged_fixtures{$file} = Hash::Merge::merge($fixture, $merged_fixtures{$file});
-			} else {
-				$merged_fixtures{$file} = $fixture;
-			}
-		}
+	my %merged_fixtures;
+    foreach my $fixture_definition(@$fixture_definitions) {
+        my ($path, $fixture) = %$fixture_definition;
+        ## hack to normalize arrayref fixtures.  needs work!!!
+        $fixture = ref $fixture eq 'HASH' ? [$fixture] : $fixture;
+        my $file = Path::Class::file($path)->basename;
+        $file =~s/\..{1,4}$//;
+        if($merged_fixtures{$file}) {
+            my $old_fixture = $merged_fixtures{$file};
+            my $merged_fixture = Hash::Merge::merge($fixture, $old_fixture);
+            $merged_fixtures{$file} = $merged_fixture;
+        } else {
+            $merged_fixtures{$file} = $fixture;
+        }
+    }
 
-		if(my $old_fixture_sets = delete $config->{fixture_sets}) {
-			my $new_fixture_sets = Hash::Merge::merge($old_fixture_sets, \%merged_fixtures );
-			$config->{fixture_sets} = $new_fixture_sets;
-		} else {
-			$config->{fixture_sets} = \%merged_fixtures;
-		}
+    if(my $old_fixture_sets = delete $config->{fixture_sets}) {
+        ## hack to normalize arrayref fixtures.  needs work!!!
+        my %normalized_old_fixture_sets = map {
+            ref($old_fixture_sets->{$_}) eq 'HASH' ? ($_, [$old_fixture_sets->{$_}]): ($_, $old_fixture_sets->{$_});
+        } keys %$old_fixture_sets;
+        my $new_fixture_sets = Hash::Merge::merge(\%normalized_old_fixture_sets, \%merged_fixtures );
+        $config->{fixture_sets} = $new_fixture_sets;
+    } else {
+        $config->{fixture_sets} = \%merged_fixtures;
+    }
 
 	return $config;
 }
@@ -604,7 +626,7 @@ sub _initialize_schema {
 			builder => $builder,
 		});
 	}; if ($@ or !$schema_manager) {
-		Test::More::fail("Can't initialize a schema with the given configuration");
+		Test::More::diag("Can't initialize a schema with the given configuration");
 		Test::More::diag("Returned Error: ".$@) if $@;
 		Test::More::diag(
 			Test::More::explain("configuration: " => $config)
@@ -681,7 +703,7 @@ such as:
 		fixtures_ok { 
 			Job => [
 				[qw/name description/],
-				[Programmer => 'She whow writes the code'],
+				[Programmer => 'She who writes the code'],
 				['Movie Star' => 'Knows nothing about the code'],
 			],
 		}, 'Installed some custom fixtures via the Populate fixture class',
@@ -885,6 +907,10 @@ via L<Data::Dump>, for example.
 
 Wipes and reloads the schema.
 
+=head2 cleanup_schema
+
+Wipes schema and disconnects.
+
 =head2 dump_settings
 
 Returns the configuration and related settings used to initialize this testing
@@ -1079,7 +1105,7 @@ configuration file.  As of this time we don't merge %ENV settings, they only
 provider overrides to the default settings. Example use (assumes you are
 using the default SQLite database)
 
-	DBPATH=test.db KEEP_DB=1 prove -lv t/schema/check-person.t
+	DBNAME=test.db KEEP_DB=1 prove -lv t/schema/check-person.t
 
 After running the test there will be a new file called 'test.db' in the home
 directory of your distribution.  You can use:
@@ -1337,7 +1363,14 @@ L<DBIx::Class>, L<DBIx::Class::Schema::PopulateMore>, L<DBIx::Class::Fixtures>
 
 =head1 AUTHOR
 
-John Napiorkowski C<< <jjnapiork@cpan.org> >>
+    John Napiorkowski C<< <jjnapiork@cpan.org> >>
+
+=head1 CONTRIBUTORS
+
+    Tristan Pratt
+    Tomas Doran C<< <bobtfish@bobtfish.net> >>
+    Kyle Hasselbacher C<< kyleha@gmail.com >>
+    cvince 
 
 =head1 COPYRIGHT & LICENSE
 

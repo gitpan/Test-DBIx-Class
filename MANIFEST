@@ -1,3 +1,4 @@
+.Changes.swp
 Changes
 inc/Module/AutoInstall.pm
 inc/Module/Install.pm
@@ -10,6 +11,7 @@ inc/Module/Install/Makefile.pm
 inc/Module/Install/Metadata.pm
 inc/Module/Install/Win32.pm
 inc/Module/Install/WriteAll.pm
+lib/Test/DBIx/.Class.pm.swp
 lib/Test/DBIx/Class.pm
 lib/Test/DBIx/Class/Example/Schema.pm
 lib/Test/DBIx/Class/Example/Schema/DefaultRS.pm
@@ -37,7 +39,7 @@ Makefile.PL
 MANIFEST			This list of files
 META.yml
 README
-t/00-load.t
+t/00-basic.t
 t/01-normalize-options.t
 t/02-initialize-schema.t
 t/03-merge-configs.t
@@ -47,6 +49,11 @@ t/06-basic-test-schema.t
 t/07-alternative-config.t
 t/08-test-mysqld.t
 t/09-test-postgresql.t
+t/10-replication-mysql.t
+t/11-fixtures_ok_populate.t
+t/11-set-from-env.t
+t/12-fixtures_ok_populatemore.t
+t/13-test-sqlite.t
 t/etc/example/fixtures/core.pl
 t/etc/example/fixtures/more.pl
 t/etc/example/schema.pl

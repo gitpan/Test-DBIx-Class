@@ -95,6 +95,8 @@ package Test::DBIx::Class::SchemaManager; {
 		my $schema_class = $self->schema_class;
 		my $connect_info = $self->connect_info;
 
+		$schema_class = $self->prepare_schema_class($schema_class);
+
 		return $schema_class->connect($connect_info);
 	}
 
@@ -112,6 +114,11 @@ package Test::DBIx::Class::SchemaManager; {
 		return $self->fixture_class->new(schema_manager=>$self);
 	}
 
+	sub prepare_schema_class {
+		my ($self, $schema_class) = @_;
+		return $schema_class;
+	}
+
 	sub initialize_schema {
 		my ($class, $config) = @_;
 
@@ -123,17 +130,20 @@ package Test::DBIx::Class::SchemaManager; {
 		if(my $connect_info = $config->{connect_info}) {
 			$connect_info = to_ConnectInfo($connect_info);
 			my ($driver) = $connect_info->{dsn} =~ /dbi:([^:]+):/i;
-			## TODO map drivers to storage traits
+                        if(lc $driver eq "sqlite") {
+                            push @traits, 'SQLite';    
+                        }
+                        # Don't assume mysql means we want Testmysqld; we may
+                        # want to connect to a real mysql server to test.
 		} else {
 			push @traits, 'SQLite'
 			  unless @traits;
 		}
 		@traits = uniq @traits;
-
 		$config->{traits} = \@traits;
 		my $self = $class->new_with_traits($config);
-
 		if($self) {
+			$self->schema->storage->ensure_connected; 
 			$self->setup;
 			return $self;
 		} else {
@@ -155,9 +165,7 @@ package Test::DBIx::Class::SchemaManager; {
 
 	sub setup {
 		my $self = shift @_;
-		$self->schema->storage->ensure_connected; 
 		my $deploy_args = $self->force_drop_table ? {add_drop_table => 1} : {};
-
 		if(my $schema = $self->schema) {
 			eval {
 				$schema->deploy($deploy_args);
@@ -210,7 +218,7 @@ package Test::DBIx::Class::SchemaManager; {
 		});
 	}
 
-	sub DESTROY {
+	sub DEMOLISH {
 		my $self = shift @_;
 		if(defined $self) {
 			$self->cleanup;

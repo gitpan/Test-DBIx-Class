@@ -1,75 +1,299 @@
-package Test::DBIx::Class::SchemaManager::Trait::Testmysqld; {
+package Test::DBIx::Class::SchemaManager::Trait::Testmysqld;
 	
-	use Moose::Role;
-	use MooseX::Attribute::ENV;
-	use Test::mysqld;
-	use Test::More ();
-	use Path::Class qw(dir);
+use Moose::Role;
+use MooseX::Attribute::ENV;
+use Test::mysqld;
+use Test::More ();
+use Path::Class qw(dir);
+use Test::DBIx::Class::Types qw(ReplicantsConnectInfo);
 
-	has '+force_drop_table' => (default=>1);
+requires 'setup', 'cleanup';
 
-	has mysqldobj => (
-		is=>'ro',
-		init_arg=>undef,
-		lazy_build=>1,
-	);
+has '+force_drop_table' => (is=>'rw',default=>1);
+
+has [qw/base_dir mysql_install_db mysqld/] => (
+    is=>'ro', 
+    traits=>['ENV'], 
+);
+
+has test_db_manager => (
+    is=>'ro',
+    init_arg=>undef,
+    lazy_build=>1,
+);
+
+sub _build_test_db_manager {
+    my $self = shift @_;
+    my %config = $self->prepare_config(@_);
+
+    if($self->keep_db) {
+        $ENV{TEST_MYSQLD_PRESERVE} = 1;
+    }
+
+    if(my $testdb = $self->deploy_testdb(%config)) {
+        return $testdb;
+    } else {
+        die $Test::mysqld::errstr;
+    }
+}
+
+has default_cnf => (
+    is=>'ro', 
+    init_arg=>undef, 
+    isa=>'HashRef', 
+    auto_deref=>1, 
+    lazy_build=>1,
+);
+
+sub _build_default_cnf {
+    my $port = first_unused_port();
+    return {
+        'server-id'=>1,
+        'log-bin'=>'mysql-bin',
+        'binlog-do-db'=>'test',
+        'port'=>$port,
+    };
+}
+
+has my_cnf => (
+    is=>'ro', 
+    isa=>'HashRef', 
+    auto_deref=>1,
+);
+
+## Replicant stuff... probably should be a delegate
+
+has deployed_replicants => (is=>'rw', isa=>'ArrayRef', auto_deref=>1);
+
+has replicants => (
+    is=>'rw',
+    isa=>ReplicantsConnectInfo,
+    coerce=>1,
+    auto_deref=>1,
+    predicate=>'has_replicants',
+);
+
+has pool_args => (
+    is=>'ro',
+    isa=>'HashRef',
+    required=>0,
+    predicate=>'has_pool_args',
+);
+
+has balancer_type => (
+    is=>'ro',
+    isa=>'Str',
+    required=>1,
+    predicate=>'has_balancer_type',
+    default=>'::Random',
+);
+
+has balancer_args => (
+    is=>'ro',
+    isa=>'HashRef',
+    required=>1,
+    predicate=>'has_balancer_args',
+    default=> sub {
+        return {
+            auto_validate_every=>10,
+            master_read_weight => 1,
+        },	
+    },
+);
+
+has default_replicant_cnf => (
+    is=>'ro', 
+    init_arg=>undef, 
+    isa=>'HashRef', 
+    auto_deref=>1, 
+    required=>1,
+    default=> sub { +{} },
+);
+
+has my_replicant_cnf => (
+    is=>'ro', 
+    isa=>'HashRef', 
+    auto_deref=>1,
+);
+
+sub prepare_replicant_config {
+    my ($self, $replicant, @replicants,%extra) = @_;
+    my %my_cnf_extra = $extra{my_cnf} ? delete $extra{my_cnf} : ();
+    my $port = first_unused_port();
+    my %config = (
+        my_cnf => {
+            'port'=>$port,
+            'server-id'=>($replicant->{name}+2),
+            $self->default_replicant_cnf,
+            $self->my_replicant_cnf,
+            %my_cnf_extra,
+        },
+        %extra,
+    );
+
+    my $replicant_name =$replicant->{name};
+    my $base_dir = $self->test_db_manager->base_dir . "/$replicant_name";
+
+    $config{base_dir} = $base_dir;	
+    $config{mysql_install_db} = $self->mysql_install_db if $self->mysql_install_db;	
+    $config{mysqld} = $self->mysqld if $self->mysqld;	
+    
+    return %config;
+}
+
+around 'prepare_schema_class' => sub {
+    my ($prepare_schema_class, $self, @args) = @_;
+    my $schema_class = $self->$prepare_schema_class(@args);
+    if($self->has_replicants) {
+        $schema_class->storage_type({
+            '::DBI::Replicated' => {
+                pool_args => $self->has_pool_args ? $self->pool_args : {},
+                balancer_type => $self->has_balancer_type ? $self->balancer_type : '',
+                balancer_args => $self->has_balancer_args ? $self->balancer_args : {},
+            },
+        });
+    }
+
+    return $schema_class;
+};
+
+around 'setup' => sub {
+    my ($setup, $self, @args) = @_;
+ 
+    return $self->$setup(@args) unless $self->has_replicants;
+
+    ## Do we need to invent replicants?
+    my @replicants = ();
+    my @deployed_replicants = ();
+    foreach	my $replicant ($self->replicants) { 
+        if($replicant->{dsn}) {
+            push @replicants, $replicant;
+        } else {
+            ## If there is no 'dsn' key, that means we should auto generate
+            ## a test db and request its connect info.
+            $replicant->{name} = defined $replicant->{name} ? $replicant->{name} : ($#replicants+1);
+            my %config = $self->prepare_replicant_config($replicant, @replicants);
+            my $deployed = $self->deploy_testdb(%config);
+            my $replicant_base_dir = $deployed->base_dir;
+
+            Test::More::diag(
+                "Starting replicant mysqld with: ".
+                $deployed->mysqld.
+                " --defaults-file=".$replicant_base_dir . '/etc/my.cnf'.
+                " --user=root"
+            );
+
+            Test::More::diag("DBI->connect('DBI:mysql:test;mysql_socket=$replicant_base_dir/tmp/mysql.sock','root','')");
+            push @deployed_replicants, $deployed;
+            push @replicants, 
+              ["DBI:mysql:test;mysql_socket=$replicant_base_dir/tmp/mysql.sock",'root',''];
+
+        }	
+    }
 
 
-	has [qw/base_dir mysql_install_db mysqld/] => (
-		is=>'ro', 
-		traits=>['ENV'], 
-	);
+    $self->deployed_replicants(\@deployed_replicants);
+    $self->replicants(\@replicants);
+    $self->schema->storage->connect_replicants($self->replicants);
+    $self->schema->storage->ensure_connected;
 
-	has my_cnf => (is=>'ro', isa=>'HashRef', auto_deref=>1);
+    foreach my $storage ($self->schema->storage->pool->all_replicant_storages) {
+        ## TODO, need to change this to dbh_do
+        my $dbh = $storage->_get_dbh;
+        $dbh->do("CHANGE MASTER TO  master_host='127.0.0.1',  master_port=8001,  master_user='root',  master_password=''")
+            || die $dbh->errstr;
+        $dbh->do("START SLAVE")
+            || die $dbh->errstr;
+    }
 
-	sub _build_mysqldobj {
-		my ($self) = @_;
-		if($self->keep_db) {
-			$ENV{TEST_MYSQLD_PRESERVE} = 1;
-		}
+    return $self->$setup(@args);
+};
 
-		my %config = (
-			my_cnf=>{'skip-networking'=>''},
-			$self->my_cnf,
-		);
+sub prepare_config {
+    my ($self, %extra) = @_;
+    my %my_cnf_extra = $extra{my_cnf} ? delete $extra{my_cnf} : ();
+    my %config = (
+        my_cnf => {
+            $self->default_cnf, 
+            $self->my_cnf, 
+            %my_cnf_extra,
+        },
+        %extra,
+    );
 
-		$config{base_dir} = $self->base_dir if $self->base_dir;	
-		$config{mysql_install_db} = $self->mysql_install_db if $self->mysql_install_db;	
-		$config{mysqld} = $self->mysqld if $self->mysqld;	
+    $config{base_dir} = $self->base_dir if $self->base_dir;	
+    $config{mysql_install_db} = $self->mysql_install_db if $self->mysql_install_db;	
+    $config{mysqld} = $self->mysqld if $self->mysqld;	
+ 
+    return %config;
+}
 
-		if(my $testdb = Test::mysqld->new(%config)) {
-			return $testdb;
-		} else {
-			die $Test::mysqld::errstr;
-		}
-	}
+sub deploy_testdb {
+    my ($self, %config) = @_;
+    return Test::mysqld->new(%config);
+}
 
-	sub get_default_connect_info {
-		my ($self) = @_;
-		my $base_dir = $self->mysqldobj->base_dir;
+sub get_default_connect_info {
+    my $self = shift @_;
+    my $deployed_db = shift(@_) || $self->test_db_manager;
+    my $base_dir = $deployed_db->base_dir;
 
-		Test::More::diag(
-			"Starting mysqld with: ".
-			$self->mysqldobj->mysqld.
-			" --defaults-file=".$self->mysqldobj->base_dir . '/etc/my.cnf'.
-			" --user=root"
-		);
+    Test::More::diag(
+        "Starting mysqld with: ".
+        $deployed_db->mysqld.
+        " --defaults-file=".$base_dir . '/etc/my.cnf'.
+        " --user=root"
+    );
 
-		Test::More::diag("DBI->connect('DBI:mysql:test;mysql_socket=$base_dir/tmp/mysql.sock','root','')");
-		return ["DBI:mysql:test;mysql_socket=$base_dir/tmp/mysql.sock",'root',''];
-	}
+    Test::More::diag("DBI->connect('DBI:mysql:test;mysql_socket=$base_dir/tmp/mysql.sock','root','')");
+    return ["DBI:mysql:test;mysql_socket=$base_dir/tmp/mysql.sock",'root',''];
+}
 
-	after 'cleanup' => sub {
-		my ($self) = @_;
-		unless($self->keep_db) {
-			if($self->base_dir) {
-				my $dir = dir($self->base_dir);
-				$dir->rmtree;
-			}
-		}
-	};
+after 'cleanup' => sub {
+    my ($self) = @_;
+    unless($self->keep_db) {
+        if($self->base_dir) {
+            my $dir = dir($self->base_dir);
+            $dir->rmtree;
+        }
+    }
+};
 
-} 1;
+use Socket;
+sub is_port_open {
+    my ($port) = @_;
+    my ($host, $iaddr, $paddr, $proto);
+
+    $host  =  '127.0.0.1';
+    $iaddr   = inet_aton($host)               
+        or die "no host: $host";
+    $paddr   = sockaddr_in($port, $iaddr);
+
+    $proto   = getprotobyname('tcp');
+    socket(SOCK, PF_INET, SOCK_STREAM, $proto)
+        or die "error creating test socket for port $port: $!";
+    if (connect(SOCK, $paddr)) {
+        close (SOCK)
+            or die "error closing test socket: $!";
+        return 1;
+    }
+    return 0; 
+}
+
+our $next_port = 8000;
+sub first_unused_port {
+    ++$next_port;
+    my $port = $next_port;
+    while (is_port_open($port)) {
+        $port++;
+        if ($port > 0xFFF0) {
+            die "no ports available\n";
+        }
+    }
+    return $port;
+}
+
+1;
 
 __END__
 
