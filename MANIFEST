@@ -1,4 +1,3 @@
-.Changes.swp
 Changes
 inc/Module/AutoInstall.pm
 inc/Module/Install.pm
@@ -11,7 +10,6 @@ inc/Module/Install/Makefile.pm
 inc/Module/Install/Metadata.pm
 inc/Module/Install/Win32.pm
 inc/Module/Install/WriteAll.pm
-lib/Test/DBIx/.Class.pm.swp
 lib/Test/DBIx/Class.pm
 lib/Test/DBIx/Class/Example/Schema.pm
 lib/Test/DBIx/Class/Example/Schema/DefaultRS.pm
