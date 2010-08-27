@@ -25,6 +25,7 @@ requires:
   DBIx::Class::Schema::PopulateMore: 0.15
   DBIx::Class::TimeStamp: 0.13
   DBIx::Class::UUIDColumns: 0.02005
+  Data::Dumper: 2.126
   Data::UUID: 1.215
   Data::Visitor: 0.27
   Digest::MD5: 2.39
@@ -44,4 +45,4 @@ requires:
 resources:
   license: http://dev.perl.org/licenses/
   repository: git://github.com/jjn1056/Test-DBIx-Class.git
-version: 0.11
+version: 0.12
