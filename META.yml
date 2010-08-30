@@ -21,6 +21,7 @@ no_index:
     - t
 requires:
   Config::Any: 0.19
+  DBD::SQLite: 1.29
   DBIx::Class: 0.08123
   DBIx::Class::Schema::PopulateMore: 0.15
   DBIx::Class::TimeStamp: 0.13
@@ -45,4 +46,4 @@ requires:
 resources:
   license: http://dev.perl.org/licenses/
   repository: git://github.com/jjn1056/Test-DBIx-Class.git
-version: 0.12
+version: 0.13
