@@ -1,6 +1,6 @@
 # NAME
 
-Test::DBIx::Class - Easier test cases for your [DBIx::Class](http://search.cpan.org/perldoc?DBIx::Class) applications
+Test::DBIx::Class - Easier test cases for your DBIx::Class applications
 
 # SYNOPSIS
 
@@ -406,7 +406,7 @@ be installed via one of the fixture classes.
 Command class that installs data into the database.  Must provide a method
 called 'install_fixtures' that accepts a perl data structure and installs
 it into the database.  Must capture and report errors.  Default value is
-"::Populate", which loads [Test::DBIx::Class::FixtureClass::Populate](http://search.cpan.org/perldoc?Test::DBIx::Class::FixtureClass::Populate), which
+"::Populate", which loads [Test::DBIx::Class::FixtureCommand::Populate](http://search.cpan.org/perldoc?Test::DBIx::Class::FixtureCommand::Populate), which
 is a command class based on L<DBIx::Class::Schema/populate>.
 
 - resultsets
@@ -721,7 +721,9 @@ The following modules or resources may be of interest.
     Tristan Pratt
     Tomas Doran C<< <bobtfish@bobtfish.net> >>
     Kyle Hasselbacher C<< kyleha@gmail.com >>
-    cvince 
+    cvince
+    colinnewell 
+    rbuels
 
 # COPYRIGHT & LICENSE
 

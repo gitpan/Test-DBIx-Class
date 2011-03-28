@@ -6,7 +6,7 @@ use warnings;
 
 use base 'Test::Builder::Module';
 
-our $VERSION = '0.19';
+our $VERSION = '0.20';
 our $AUTHORITY = 'cpan:JJNAPIORK';
 
 use Config::Any;
@@ -655,7 +655,7 @@ __END__
 
 =head1 NAME
 
-Test::DBIx::Class - Easier test cases for your L<DBIx::Class> applications
+Test::DBIx::Class - Easier test cases for your DBIx::Class applications
 
 =head1 SYNOPSIS
 
@@ -1063,7 +1063,7 @@ be installed via one of the fixture classes.
 Command class that installs data into the database.  Must provide a method
 called 'install_fixtures' that accepts a perl data structure and installs
 it into the database.  Must capture and report errors.  Default value is
-"::Populate", which loads L<Test::DBIx::Class::FixtureClass::Populate>, which
+"::Populate", which loads L<Test::DBIx::Class::FixtureCommand::Populate>, which
 is a command class based on L<DBIx::Class::Schema/populate>.
 
 =item resultsets
@@ -1380,7 +1380,9 @@ L<DBIx::Class>, L<DBIx::Class::Schema::PopulateMore>, L<DBIx::Class::Fixtures>
     Tristan Pratt
     Tomas Doran C<< <bobtfish@bobtfish.net> >>
     Kyle Hasselbacher C<< kyleha@gmail.com >>
-    cvince 
+    cvince
+    colinnewell 
+    rbuels
 
 =head1 COPYRIGHT & LICENSE
 

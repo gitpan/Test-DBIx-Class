@@ -1,5 +1,5 @@
 ---
-abstract: 'Easier test cases for your L<DBIx::Class> applications'
+abstract: 'Easier test cases for your DBIx::Class applications'
 author:
   - 'John Napiorkowski C<< <jjnapiork@cpan.org> >>'
 build_requires:
@@ -22,7 +22,7 @@ no_index:
 requires:
   Config::Any: 0.19
   DBIx::Class: 0.08123
-  DBIx::Class::Schema::PopulateMore: 0.15
+  DBIx::Class::Schema::PopulateMore: 0.16
   DBIx::Class::TimeStamp: 0.13
   DBIx::Class::UUIDColumns: 0.02005
   Data::UUID: 1.215
@@ -39,10 +39,10 @@ requires:
   Sub::Exporter: 0.982
   Test::Builder: 0.96
   Test::Deep: 0.106
-  Test::mysqld: 0.11
+  Test::mysqld: 0.12
   perl: 5.8.0
 resources:
   homepage: http://search.cpan.org/dist/Test-DBIx-Class/
   license: http://dev.perl.org/licenses/
   repository: git://github.com/jjn1056/Test-DBIx-Class.git
-version: 0.19
+version: 0.20
