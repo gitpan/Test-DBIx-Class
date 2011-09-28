@@ -2,7 +2,6 @@ Changes
 inc/Module/AutoInstall.pm
 inc/Module/Install.pm
 inc/Module/Install/AutoInstall.pm
-inc/Module/Install/AutoLicense.pm
 inc/Module/Install/AutoManifest.pm
 inc/Module/Install/Base.pm
 inc/Module/Install/Can.pm
@@ -49,8 +48,7 @@ lib/Test/DBIx/Class/SchemaManager/Trait/SQLite.pm
 lib/Test/DBIx/Class/SchemaManager/Trait/Testmysqld.pm
 lib/Test/DBIx/Class/SchemaManager/Trait/Testpostgresql.pm
 lib/Test/DBIx/Class/Types.pm
-LICENSE
-maint/Makefile.PL.include
+maint/Maker.pm
 Makefile.PL
 MANIFEST			This list of files
 META.yml

@@ -13,16 +13,16 @@ has 'force_drop_table' => (
     traits=>['ENV'],
     is=>'rw',
     isa=>'Bool',
-    required=>1, 
-    default=>0,	
+    required=>1,
+    default=>0,
 );
 
 has 'keep_db' => (
     traits=>['ENV'],
     is=>'ro',
     isa=>'Bool',
-    required=>1, 
-    default=>0,	
+    required=>1,
+    default=>0,
 );
 
 has 'builder' => (
@@ -58,7 +58,7 @@ has 'fixture_class' => (
     isa => FixtureClass,
     required => 1,
     coerce => 1,
-    default => '::Populate',		
+    default => '::Populate',
 );
 
 has 'fixture_command' => (
@@ -129,7 +129,7 @@ sub initialize_schema {
         $connect_info = to_ConnectInfo($connect_info);
         my ($driver) = $connect_info->{dsn} =~ /dbi:([^:]+):/i;
                     if(lc $driver eq "sqlite") {
-                        push @traits, 'SQLite';    
+                        push @traits, 'SQLite';
                     }
                     # Don't assume mysql means we want Testmysqld; we may
                     # want to connect to a real mysql server to test.
@@ -141,7 +141,7 @@ sub initialize_schema {
     $config->{traits} = \@traits;
     my $self = Moose::Util::with_traits($class, @traits)->new($config);
     if($self) {
-        $self->schema->storage->ensure_connected; 
+        $self->schema->storage->ensure_connected;
         $self->setup;
         return $self;
     } else {
@@ -171,7 +171,7 @@ sub setup {
             Test::More::fail("Error Deploying Schema: $@");
         }
         return $self;
-    } 
+    }
     return;
 }
 
@@ -180,13 +180,16 @@ sub cleanup {
     my $schema = $self->schema;
 
     return unless $schema;
+    return unless $schema->storage;
 
     unless ($self->keep_db) {
         $schema->storage->with_deferred_fk_checks(sub {
             foreach my $source ($schema->sources) {
-                my $table = $schema->source($source)->name;
+                my $tablesource = $schema->source($source);
+                next unless $tablesource;
+                my $table = $tablesource->name;
                 $schema->storage->dbh->do("drop table $table")
-                    if !($schema->source($source)->can('is_virtual') && 
+                    if !($schema->source($source)->can('is_virtual') &&
                         $schema->source($source)->is_virtual);
             }
         });
@@ -224,8 +227,8 @@ sub DEMOLISH {
         $self->cleanup;
     }
 }
-	
-1;
+
+__PACKAGE__->meta->make_immutable;
 
 __END__
 
@@ -248,7 +251,7 @@ inline configuration or use a configuration file).
 =item FORCE_DROP_TABLE
 
 Set to a true value will force dropping tables in the deploy phase.  This will
-generate warnings in a database (like sqlite) that can't detect if a table 
+generate warnings in a database (like sqlite) that can't detect if a table
 exists before attempting to drop it.  Safe for Mysql though.
 
 =item KEEP_DB
