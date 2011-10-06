@@ -52,7 +52,6 @@ sub module_install_author_plugins {
   'Module::Install::Homepage' => 'auto_set_homepage',
   'Module::Install::ManifestSkip' => [manifest_skip => qw(clean) ],
   'Module::Install::AutoManifest' => 'auto_manifest';
-
 }
 
 sub extra_author_dependencies {
@@ -163,7 +162,7 @@ sub run_if_script {
   my @caller = caller(1);
   if(is_script) {
     &run;
-  } elsif($caller[1] eq 'Makefile.PL') {
+  } elsif($caller[1] =~m/Makefile\.PL$/) {
     __PACKAGE__->import;
   } else {
     1;
