@@ -8,7 +8,7 @@ build_requires:
 configure_requires:
   ExtUtils::MakeMaker: 6.42
 distribution_type: module
-generated_by: 'Module::Install version 1.01'
+generated_by: 'Module::Install version 1.02'
 license: perl
 meta-spec:
   url: http://module-build.sourceforge.net/META-spec-v1.4.html
@@ -44,4 +44,4 @@ resources:
   homepage: http://search.cpan.org/dist/Test-DBIx-Class/
   license: http://dev.perl.org/licenses/
   repository: git://github.com/jjn1056/Test-DBIx-Class.git
-version: 0.24
+version: 0.25
