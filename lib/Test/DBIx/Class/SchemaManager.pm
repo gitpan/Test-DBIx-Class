@@ -25,6 +25,14 @@ has 'keep_db' => (
     default=>0,
 );
 
+has 'deploy_db' => (
+    traits=>['ENV'],
+    is=>'ro',
+    isa=>'Bool',
+    required=>1,
+    default=>1,
+);
+
 has 'builder' => (
     is => 'ro',
     isa => TestBuilder,
@@ -93,6 +101,8 @@ sub _build_schema {
     my $schema_class = $self->schema_class;
     my $connect_info = $self->connect_info;
 
+    return unless $schema_class;
+
     $schema_class = $self->prepare_schema_class($schema_class);
 
     return $schema_class->connect($connect_info);
@@ -139,14 +149,14 @@ sub initialize_schema {
     }
     @traits = map { __PACKAGE__."::Trait::$_"} uniq @traits;
     $config->{traits} = \@traits;
-    my $self = Moose::Util::with_traits($class, @traits)->new($config);
-    if($self) {
-        $self->schema->storage->ensure_connected;
-        $self->setup;
-        return $self;
-    } else {
-        return;
-    }
+
+    my $self = Moose::Util::with_traits($class, @traits)->new($config)
+        or return;
+
+    $self->schema->storage->ensure_connected;
+    $self->setup if $self->deploy_db;
+
+    return $self;
 }
 
 ## TODO we need to fix DBIC to allow debug levels and channels
