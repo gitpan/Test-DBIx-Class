@@ -3,12 +3,13 @@ abstract: 'Easier test cases for your DBIx::Class applications'
 author:
   - 'John Napiorkowski C<< <jjnapiork@cpan.org> >>'
 build_requires:
-  ExtUtils::MakeMaker: 6.42
+  ExtUtils::MakeMaker: 6.62
   Test::More: 0.94
 configure_requires:
-  ExtUtils::MakeMaker: 6.42
+  ExtUtils::MakeMaker: 6.62
 distribution_type: module
-generated_by: 'Module::Install version 1.02'
+dynamic_config: 1
+generated_by: 'Module::Install version 1.04'
 license: perl
 meta-spec:
   url: http://module-build.sourceforge.net/META-spec-v1.4.html
@@ -39,9 +40,10 @@ requires:
   Sub::Exporter: 0.982
   Test::Builder: 0.96
   Test::Deep: 0.106
+  Test::mysqld: 0.12
   perl: 5.8.0
 resources:
   homepage: http://search.cpan.org/dist/Test-DBIx-Class/
   license: http://dev.perl.org/licenses/
   repository: git://github.com/jjn1056/Test-DBIx-Class.git
-version: 0.26
+version: 0.27
