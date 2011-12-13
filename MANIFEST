@@ -69,3 +69,9 @@ t/etc/example/schema3.pl
 t/etc/example2/fixtures/more.pl
 t/etc/fixtures/core.pl
 t/etc/schema.pl
+t/stress_replication/10-replication-mysql.t
+t/stress_replication/11-replication-mysql.t
+t/stress_replication/12-replication-mysql.t
+t/stress_replication/13-replication-mysql.t
+t/stress_replication/14-replication-mysql.t
+t/stress_replication/15-replication-mysql.t
