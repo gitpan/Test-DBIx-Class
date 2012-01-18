@@ -6,7 +6,7 @@ use warnings;
 
 use base 'Test::Builder::Module';
 
-our $VERSION = '0.28';
+our $VERSION = '0.30';
 our $AUTHORITY = 'cpan:JJNAPIORK';
 
 use Config::Any;
@@ -682,6 +682,7 @@ script could contain:
     use Test::DBIx::Class {
         schema_class => 'MyApp::Schema',
         connect_info => ['dbi:SQLite:dbname=:memory:','',''],
+        connect_opts => { name_sep => '.', quote_char => '`', },
         fixture_class => '::Populate',
     }, 'Person', 'Person::Employee' => {-as => 'Employee'}, 'Job', 'Phone';
 
@@ -1062,6 +1063,12 @@ Required. This will accept anything you can send to L<DBIx::Class/connect>.
 Defaults to: ['dbi:SQLite:dbname=:memory:','',''] if left blank (but see
 'traits' below for more)
 
+=item connect_opts
+
+Use this to customise connect_info if you have left that blank in order to
+have the dsn auto-generated, but require extra attributes such as name_sep
+and quote_char.
+
 =item fixture_path
 
 These are a list of relative paths search for fixtures.  Each item should be
@@ -1402,10 +1409,11 @@ L<DBIx::Class>, L<DBIx::Class::Schema::PopulateMore>, L<DBIx::Class::Fixtures>
     wlk
     yanick
     hippich
+    lecstor
 
 =head1 COPYRIGHT & LICENSE
 
-Copyright 2011, John Napiorkowski C<< <jjnapiork@cpan.org> >>
+Copyright 2012, John Napiorkowski C<< <jjnapiork@cpan.org> >>
 
 This program is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself.
