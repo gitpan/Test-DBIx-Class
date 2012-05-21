@@ -14,7 +14,7 @@ use warnings;
 
 package Pod::Markdown;
 {
-  $Pod::Markdown::VERSION = '1.300000';
+  $Pod::Markdown::VERSION = '1.320';
 }
 BEGIN {
   $Pod::Markdown::AUTHORITY = 'cpan:RWSTAUNER';
@@ -50,7 +50,7 @@ sub as_markdown {
     if ($args{with_meta}) {
         @header = $parser->_build_markdown_head;
     }
-    join("\n" x 2, @header, @{$lines});
+    join("\n" x 2, @header, @{$lines}) . "\n";
 }
 
 sub _build_markdown_head {
@@ -151,7 +151,8 @@ sub command {
         $data->{Indent}--;
         $data->{searching} = '';
     } elsif ($command =~ m{item}xms) {
-        $paragraph = $parser->interpolate($paragraph, $line_num);
+        # this strips the POD bullet; the searching=listhead will insert markdown's
+        # FIXME: this does not account for numbered or named lists
         $paragraph =~ s{^[ \t]* \* [ \t]*}{}xms;
 
         if ($data->{searching} eq 'listpara') {
@@ -228,6 +229,8 @@ sub textblock {
         my $is_huddled = $1;
         $paragraph = sprintf '%s %s', $data->{ListType}, $paragraph;
         if ($is_huddled) {
+            # FIXME: what does this do?
+            # does this have something to do with preserving an indent?
             $paragraph = $parser->_unsave() . "\n" . $paragraph;
         }
         $data->{searching} = 'listpara';
@@ -337,5 +340,5 @@ sub format_header {
 
 
 __END__
-#line 515
+#line 528
 

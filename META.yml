@@ -42,11 +42,9 @@ requires:
   Sub::Exporter: 0.982
   Test::Builder: 0.96
   Test::Deep: 0.106
-  Test::mysqld: 0.14
-  Test::postgresql: 0.09
   perl: 5.8.0
 resources:
   homepage: http://search.cpan.org/dist/Test-DBIx-Class/
   license: http://dev.perl.org/licenses/
   repository: git://github.com/jjn1056/Test-DBIx-Class.git
-version: 0.32
+version: 0.33
