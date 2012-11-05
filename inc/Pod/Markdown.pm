@@ -14,8 +14,10 @@ use warnings;
 
 package Pod::Markdown;
 {
-  $Pod::Markdown::VERSION = '1.320';
+  $Pod::Markdown::VERSION = '1.321';
 }
+# git description: v1.320-6-g35fc58e
+
 BEGIN {
   $Pod::Markdown::AUTHORITY = 'cpan:RWSTAUNER';
 }
@@ -37,6 +39,7 @@ sub _private {
         Indent    => 0,        # list indent levels counter
         ListType  => '-',      # character on every item
         searching => ''   ,    # what are we searching for? (title, author etc.)
+        sstack    => [] ,      # Stack for searching, needed for nested list
         Title     => undef,    # page title
         Author    => undef,    # page author
     };
@@ -62,10 +65,15 @@ sub _build_markdown_head {
         qw( Title Author );
 }
 
+# $prelisthead:
+#   undef    : not list head
+#   ''       : list head not huddled
+#   otherwise: list head huddled
 sub _save {
-    my ($parser, $text) = @_;
+    my ($parser, $text, $prelisthead) = @_;
     my $data = $parser->_private;
-    $text = $parser->_indent_text($text);
+    $text = $parser->_indent_text($text, defined($prelisthead));
+    $text = $prelisthead."\n".$text if defined $prelisthead && $prelisthead ne '';
     push @{ $data->{Text} }, $text;
     return;
 }
@@ -77,13 +85,11 @@ sub _unsave {
 }
 
 sub _indent_text {
-    my ($parser, $text) = @_;
+    my ($parser, $text, $listhead) = @_;
     my $data   = $parser->_private;
     my $level  = $data->{Indent};
+    --$level if $listhead;
     my $indent = undef;
-    if ($level > 0) {
-        $level--;
-    }
     $indent = ' ' x ($level * 4);
     my @lines = map { $indent . $_; } split(/\n/, $text);
     return wantarray ? @lines : join("\n", @lines);
@@ -143,17 +149,27 @@ sub command {
 
         # update indent level
         $data->{Indent}++;
+        push @{$data->{sstack}}, $data->{searching};
 
-        # closing a list ?
+    # closing a list ?
     } elsif ($command =~ m{back}xms) {
 
         # decrement indent level
         $data->{Indent}--;
-        $data->{searching} = '';
+        $data->{searching} = pop @{$data->{sstack}};
+
     } elsif ($command =~ m{item}xms) {
-        # this strips the POD bullet; the searching=listhead will insert markdown's
-        # FIXME: this does not account for numbered or named lists
-        $paragraph =~ s{^[ \t]* \* [ \t]*}{}xms;
+        # this strips the POD list head; the searching=listhead will insert markdown's
+        # FIXME: this does not account for named lists
+
+        # Assuming that POD is correctly wrtitten, we just use POD list head as markdown's
+        $data->{ListType} = '-'; # Default
+        if($paragraph =~ m{^[ \t]* \* [ \t]*}xms) {
+            $paragraph =~ s{^[ \t]* \* [ \t]*}{}xms;
+        } elsif($paragraph =~ m{^[ \t]* (\d+\.) [ \t]*}xms) {
+            $data->{ListType} = $1; # For numbered list only
+            $paragraph =~ s{^[ \t]* \d+\. [ \t]*}{}xms;
+        }
 
         if ($data->{searching} eq 'listpara') {
             $data->{searching} = 'listheadhuddled';
@@ -208,6 +224,7 @@ sub _escape_non_code {
 sub textblock {
     my ($parser, $paragraph, $line_num) = @_;
     my $data = $parser->_private;
+    my $prelisthead;
 
     # escape markdown characters in text sequences except for inline code
     $paragraph = join '', $parser->parse_text(
@@ -229,9 +246,10 @@ sub textblock {
         my $is_huddled = $1;
         $paragraph = sprintf '%s %s', $data->{ListType}, $paragraph;
         if ($is_huddled) {
-            # FIXME: what does this do?
-            # does this have something to do with preserving an indent?
-            $paragraph = $parser->_unsave() . "\n" . $paragraph;
+            # To compress into an item in order to avoid "\n\n" insertion.
+            $prelisthead = $parser->_unsave();
+        } else {
+            $prelisthead = '';
         }
         $data->{searching} = 'listpara';
     } elsif ($data->{searching} eq 'listpara') {
@@ -239,7 +257,7 @@ sub textblock {
     }
 
     # save the text
-    $parser->_save($paragraph);
+    $parser->_save($paragraph, $prelisthead);
 }
 
 sub interior_sequence {
@@ -338,7 +356,6 @@ sub format_header {
 
 1;
 
-
 __END__
-#line 528
 
+#line 546

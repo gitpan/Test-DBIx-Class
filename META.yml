@@ -46,5 +46,5 @@ requires:
 resources:
   homepage: http://search.cpan.org/dist/Test-DBIx-Class/
   license: http://dev.perl.org/licenses/
-  repository: git://github.com/jjn1056/Test-DBIx-Class.git
-version: 0.34
+  repository: https://github.com/jjn1056/Test-DBIx-Class.git
+version: 0.35
