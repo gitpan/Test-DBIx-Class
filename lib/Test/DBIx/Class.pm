@@ -6,7 +6,7 @@ use warnings;
 
 use base 'Test::Builder::Module';
 
-our $VERSION = '0.35';
+our $VERSION = '0.36';
 our $AUTHORITY = 'cpan:JJNAPIORK';
 
 use Config::Any;
@@ -692,11 +692,11 @@ script could contain:
 
     done_testing;
 
-Yes, it looks like a lot of boilerplate, but sensible defaults are in place 
+Yes, it looks like a lot of boilerplate, but sensible defaults are in place
 (the above code example shows most of the existing defaults) and configuration
-data can be loaded from a central file.  So your 'real life' example is going
-to look closer to (assuming you put all your test configuration in the standard
-place, "t/etc/schema.conf":
+data L<can be loaded from a central file|/"CONFIGURATION BY FILE">.  So,
+assuming you put all of your test configuration in the standard place, your
+'real life' example is going to look closer to:
 
     use Test::More;
         
@@ -1357,6 +1357,8 @@ You might find this useful for configuring localized username and passwords
 although personally I'd rather set that via configuration in the user home
 directory.
 
+=back
+
 =head1 TRAITS
 
 As described, a trait is a L<Moose::Role> that is applied to the class managing
@@ -1417,6 +1419,8 @@ L<DBIx::Class>, L<DBIx::Class::Schema::PopulateMore>, L<DBIx::Class::Fixtures>
     hippich
     lecstor
     bphillips
+    abraxxa
+    oalders
 
 =head1 COPYRIGHT & LICENSE
 
