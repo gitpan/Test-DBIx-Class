@@ -6,7 +6,7 @@ use warnings;
 
 use base 'Test::Builder::Module';
 
-our $VERSION = '0.38';
+our $VERSION = '0.39';
 our $AUTHORITY = 'cpan:JJNAPIORK';
 
 use Config::Any;
@@ -1080,6 +1080,11 @@ Defaults to: ['dbi:SQLite:dbname=:memory:','',''] if left blank (but see
 Use this to customise connect_info if you have left that blank in order to
 have the dsn auto-generated, but require extra attributes such as name_sep
 and quote_char.
+
+=item deploy_opts
+
+Use this to customise any arguments that are to be passed to
+L<DBIx::Class::Schema/deploy>, such as add_drop_table or quote_identifiers.
 
 =item fixture_path
 
