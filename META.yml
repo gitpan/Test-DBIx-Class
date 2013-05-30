@@ -28,6 +28,7 @@ requires:
   DBIx::Class::UUIDColumns: 0.02005
   Data::UUID: 1.215
   Data::Visitor: 0.27
+  DateTime::Format::Pg: 0
   Digest::MD5: 2.39
   File::Path: 0
   File::Temp: 0
@@ -44,7 +45,5 @@ requires:
   Test::Deep: 0.106
   perl: 5.8.0
 resources:
-  homepage: http://search.cpan.org/dist/Test-DBIx-Class/
   license: http://dev.perl.org/licenses/
-  repository: git://github.com/jjn1056/Test-DBIx-Class.git
-version: 0.39
+version: 0.40
