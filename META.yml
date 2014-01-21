@@ -34,6 +34,7 @@ requires:
   File::Temp: 0
   Hash::Merge: 0.11
   List::MoreUtils: 0.22
+  Module::Runtime: 0.013
   Moose: 1.10
   MooseX::Attribute::ENV: 0.01
   MooseX::Types: 0.23
@@ -45,5 +46,7 @@ requires:
   Test::Deep: 0.106
   perl: 5.8.0
 resources:
+  homepage: http://search.cpan.org/dist/Test-DBIx-Class/
   license: http://dev.perl.org/licenses/
-version: 0.40
+  repository: git://github.com/jjn1056/Test-DBIx-Class.git
+version: 0.41
