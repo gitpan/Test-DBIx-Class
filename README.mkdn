@@ -83,7 +83,6 @@ such as:
         'Same test as above, just different compare format;
 
 
-
     is_fields [qw/job_title salary/], $john->jobs, [
         ['programmer', 100000],
         ['administrator, 120000],
@@ -151,8 +150,6 @@ The following methods are automatically imported when you use this module.
 
 You probably won't need this directly in your tests unless you have some
 application logic methods in it.
-
-
 
 ## ResultSet ($source, ?{%search}, ?{%conditions})
 
@@ -529,6 +526,7 @@ This code reference gets passed the resultset object.  So you can use any
 method on $resultset.  For example:
 
     'Person' => {exec => sub { shift->find('john') }, -as => 'John'}; 
+
     is_result John;
     is John->name, 'John Napiorkowski', "Got Correct Name";
 

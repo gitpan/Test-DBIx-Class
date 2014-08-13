@@ -63,6 +63,7 @@ t/14-hide-diag.t
 t/14-test-connection-opts.t
 t/15-hide-diag-mysqld.t
 t/16-hide-diag-postgres.t
+t/17-importing-sources-gives-new-resultset.t
 t/etc/example/fixtures/core.pl
 t/etc/example/fixtures/more.pl
 t/etc/example/schema.pl

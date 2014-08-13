@@ -6,7 +6,7 @@ use warnings;
 
 use base 'Test::Builder::Module';
 
-our $VERSION = '0.41';
+our $VERSION = '0.42';
 our $AUTHORITY = 'cpan:JJNAPIORK';
 
 use Config::Any;
@@ -316,7 +316,7 @@ sub import {
                             }
                             return $resultset->search(@search);
                         }
-                        return $resultset;
+                        return $resultset->search_rs;
                     }
                 };
             } $schema_manager->schema->sources,
