@@ -18,8 +18,8 @@ use Test::More; {
 	use warnings;
 
 	BEGIN {
-		eval "use Test::postgresql"; if($@) {
-			plan skip_all => 'Test::postgresql not installed';
+		eval "use Test::PostgreSQL"; if($@) {
+			plan skip_all => 'Test::PostgreSQL not installed';
 		}
 	}
 
@@ -50,6 +50,9 @@ use Test::More; {
         traits => [qw!Testpostgresql!],
         tdbic_debug => 0,
         keep_db => $env_keep_db,
+        connect_opts => {
+            on_connect_do => 'SET client_min_messages=WARNING;',
+        },
 	}, 'Created Sample inline configuration';
 
     #-------------------
